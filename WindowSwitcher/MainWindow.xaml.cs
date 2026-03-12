@@ -17,7 +17,7 @@ public partial class MainWindow : Window
     private List<WindowEntry> _vsCodeEntries = [];
     private List<WindowEntry> _terminalEntries = [];
     private List<string> _unpinnedVsCodeOrder = [];
-    private List<string> _terminalOrder = [];
+    private List<nint> _terminalOrder = [];
 
     public MainWindow()
     {
@@ -126,20 +126,27 @@ public partial class MainWindow : Window
         for (int i = 0; i < entries.Count; i++)
             entries[i].Index = i;
 
-        // --- Terminals ---
+        // --- Terminals (handle-based to support duplicate titles) ---
         var terminals = WindowEnumerator.GetTerminalWindows();
-        var terminalByTitle = terminals.ToDictionary(t => t.FullTitle, t => t);
+        var runningHandles = new HashSet<nint>(terminals.Select(t => t.Handle));
 
         var terminalEntries = new List<WindowEntry>();
 
-        // Pinned terminals first
+        // Pinned terminals first (by title — all matching windows are pinned)
+        var pinnedSet = new HashSet<string>(_pinSettings.PinnedTerminalNames);
+        var usedHandles = new HashSet<nint>();
+
         foreach (var pinName in _pinSettings.PinnedTerminalNames)
         {
-            if (terminalByTitle.TryGetValue(pinName, out var t))
+            var matched = terminals.Where(t => t.FullTitle == pinName && !usedHandles.Contains(t.Handle)).ToList();
+            if (matched.Count > 0)
             {
-                t.IsPinned = true;
-                terminalEntries.Add(t);
-                terminalByTitle.Remove(pinName);
+                foreach (var t in matched)
+                {
+                    t.IsPinned = true;
+                    terminalEntries.Add(t);
+                    usedHandles.Add(t.Handle);
+                }
             }
             else
             {
@@ -154,16 +161,20 @@ public partial class MainWindow : Window
             }
         }
 
-        // Non-pinned terminals (stable order)
-        _terminalOrder.RemoveAll(name => !terminalByTitle.ContainsKey(name));
-        foreach (var title in terminalByTitle.Keys)
+        // Non-pinned terminals (stable order by handle)
+        var unpinnedTerminals = terminals.Where(t => !usedHandles.Contains(t.Handle)).ToList();
+        var unpinnedHandles = new HashSet<nint>(unpinnedTerminals.Select(t => t.Handle));
+
+        _terminalOrder.RemoveAll(h => !unpinnedHandles.Contains(h));
+        foreach (var t in unpinnedTerminals)
         {
-            if (!_terminalOrder.Contains(title))
-                _terminalOrder.Add(title);
+            if (!_terminalOrder.Contains(t.Handle))
+                _terminalOrder.Add(t.Handle);
         }
-        foreach (var title in _terminalOrder)
+        var unpinnedByHandle = unpinnedTerminals.ToDictionary(t => t.Handle, t => t);
+        foreach (var handle in _terminalOrder)
         {
-            if (terminalByTitle.TryGetValue(title, out var t))
+            if (unpinnedByHandle.TryGetValue(handle, out var t))
                 terminalEntries.Add(t);
         }
 

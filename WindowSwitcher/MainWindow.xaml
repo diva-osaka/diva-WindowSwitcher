@@ -5,6 +5,7 @@
         Title="WindowSwitcher"
         Width="160" Height="600"
         WindowStyle="ToolWindow"
+        ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="CanResizeWithGrip"
         Left="0" Top="100"
