@@ -98,6 +98,7 @@ public static partial class WindowEnumerator
                 FullTitle = title,
                 WorkspaceName = title,
                 DisplayName = title,
+                Category = EntryCategory.Terminal,
             });
 
             return true;

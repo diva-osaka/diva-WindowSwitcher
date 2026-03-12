@@ -1,5 +1,7 @@
 namespace WindowSwitcher;
 
+public enum EntryCategory { VsCode, Terminal }
+
 public class WindowEntry
 {
     public nint Handle { get; init; }
@@ -9,4 +11,5 @@ public class WindowEntry
     public bool IsRunning { get; set; } = true;
     public bool IsPinned { get; set; }
     public int Index { get; set; } = -1;
+    public EntryCategory Category { get; init; } = EntryCategory.VsCode;
 }

@@ -9,6 +9,7 @@ public class PinSettings
         AppContext.BaseDirectory, "settings.json");
 
     public List<string> PinnedNames { get; set; } = [];
+    public List<string> PinnedTerminalNames { get; set; } = [];
     public double? WindowLeft { get; set; }
     public double? WindowTop { get; set; }
     public double? WindowWidth { get; set; }

@@ -130,15 +130,37 @@ public partial class MainWindow : Window
         var terminals = WindowEnumerator.GetTerminalWindows();
         var terminalByTitle = terminals.ToDictionary(t => t.FullTitle, t => t);
 
-        // Stable order for terminals
+        var terminalEntries = new List<WindowEntry>();
+
+        // Pinned terminals first
+        foreach (var pinName in _pinSettings.PinnedTerminalNames)
+        {
+            if (terminalByTitle.TryGetValue(pinName, out var t))
+            {
+                t.IsPinned = true;
+                terminalEntries.Add(t);
+                terminalByTitle.Remove(pinName);
+            }
+            else
+            {
+                terminalEntries.Add(new WindowEntry
+                {
+                    WorkspaceName = pinName,
+                    DisplayName = pinName,
+                    IsPinned = true,
+                    IsRunning = false,
+                    Category = EntryCategory.Terminal,
+                });
+            }
+        }
+
+        // Non-pinned terminals (stable order)
         _terminalOrder.RemoveAll(name => !terminalByTitle.ContainsKey(name));
         foreach (var title in terminalByTitle.Keys)
         {
             if (!_terminalOrder.Contains(title))
                 _terminalOrder.Add(title);
         }
-
-        var terminalEntries = new List<WindowEntry>();
         foreach (var title in _terminalOrder)
         {
             if (terminalByTitle.TryGetValue(title, out var t))
@@ -282,13 +304,16 @@ public partial class MainWindow : Window
     private ContextMenu CreateContextMenu(WindowEntry entry)
     {
         var menu = new ContextMenu();
+        var pinList = entry.Category == EntryCategory.Terminal
+            ? _pinSettings.PinnedTerminalNames
+            : _pinSettings.PinnedNames;
 
         if (entry.IsPinned)
         {
             var unpin = new MenuItem { Header = "Unpin" };
             unpin.Click += (_, _) =>
             {
-                _pinSettings.PinnedNames.Remove(entry.WorkspaceName);
+                pinList.Remove(entry.WorkspaceName);
                 _pinSettings.Save();
                 RefreshList();
             };
@@ -299,9 +324,9 @@ public partial class MainWindow : Window
             var pin = new MenuItem { Header = "Pin" };
             pin.Click += (_, _) =>
             {
-                if (!_pinSettings.PinnedNames.Contains(entry.WorkspaceName))
+                if (!pinList.Contains(entry.WorkspaceName))
                 {
-                    _pinSettings.PinnedNames.Add(entry.WorkspaceName);
+                    pinList.Add(entry.WorkspaceName);
                     _pinSettings.Save();
                 }
                 RefreshList();
