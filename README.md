@@ -13,6 +13,7 @@
 - **VS Code 一覧** — 起動中の VS Code ウィンドウをワークスペース名で一覧表示
 - **Windows Terminal 一覧** — 起動中の Terminal ウィンドウを一覧表示（セパレーターで区切り）
 - **クリックで切り替え** — 一覧のアイテムをクリックするとそのウィンドウがフォアグラウンドに
+- **分離したウィンドウもまとめて前面へ** — VS Code はタブを外にドラッグするとソースコードや Markdown プレビューを独立したウィンドウにできる。これらは同じワークスペースの1項目としてまとめて表示し、クリック（またはショートカット）で**すべて前面に出す**
 - **キーボードショートカット**
   - `Ctrl+Alt+1~9` — VS Code を番号で切り替え
   - `Ctrl+Shift+1~9` — Terminal を番号で切り替え
@@ -27,6 +28,15 @@
 - **Terminal の識別**: ウィンドウクラス `CASCADIA_HOSTING_WINDOW_CLASS`（Windows Terminal 固有）でフィルタ
 - **ウィンドウ切り替え**: `AttachThreadInput` + `BringWindowToTop` + `SetForegroundWindow` で確実にアクティブ化
 - **短縮名**: `devsys-BucketCounter` → `BucketCounter`（ハイフン以降を表示）
+- **複数ウィンドウの集約**: 1つの項目は複数のウィンドウハンドルを持つ（`WindowEntry.Handles`）。同じワークスペース名のウィンドウを `WindowGrouping.GroupByWorkspace` でまとめ、アクティブ化は末尾から先頭の順に行って代表ウィンドウが最前面になるようにしている
+
+## テスト
+
+```bash
+dotnet test WindowSwitcher.Tests/WindowSwitcher.Tests.csproj
+```
+
+ウィンドウの集約ロジックは UI から切り離してあるため単体テストできる。
 
 ## 動作環境
 

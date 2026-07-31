@@ -63,7 +63,7 @@ public static partial class WindowEnumerator
 
             windows.Add(new WindowEntry
             {
-                Handle = hWnd,
+                Handles = [hWnd],
                 FullTitle = title,
                 WorkspaceName = workspaceName,
                 DisplayName = displayName,
@@ -94,7 +94,7 @@ public static partial class WindowEnumerator
 
             windows.Add(new WindowEntry
             {
-                Handle = hWnd,
+                Handles = [hWnd],
                 FullTitle = title,
                 WorkspaceName = title,
                 DisplayName = title,

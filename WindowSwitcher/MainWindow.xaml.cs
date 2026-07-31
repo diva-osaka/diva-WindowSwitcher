@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -71,13 +71,13 @@ public partial class MainWindow : Window
     private void OnVsCodeHotkey(int index)
     {
         if (index < _vsCodeEntries.Count && _vsCodeEntries[index].IsRunning)
-            WindowActivator.Activate(_vsCodeEntries[index].Handle);
+            WindowActivator.ActivateAll(_vsCodeEntries[index].Handles);
     }
 
     private void OnTerminalHotkey(int index)
     {
         if (index < _terminalEntries.Count && _terminalEntries[index].IsRunning)
-            WindowActivator.Activate(_terminalEntries[index].Handle);
+            WindowActivator.ActivateAll(_terminalEntries[index].Handles);
     }
 
     private void RefreshList()
@@ -85,7 +85,8 @@ public partial class MainWindow : Window
         var entries = new List<WindowEntry>();
 
         // --- VS Code ---
-        var running = WindowEnumerator.GetVsCodeWindows();
+        // タブを外に出すと同じワークスペースで複数ウィンドウになるため、先にまとめる。
+        var running = WindowGrouping.GroupByWorkspace(WindowEnumerator.GetVsCodeWindows());
         var runningByWorkspace = running.ToDictionary(w => w.WorkspaceName, w => w);
 
         // Pinned first
@@ -110,11 +111,12 @@ public partial class MainWindow : Window
         }
 
         // Non-pinned VS Code (stable order)
+        // 新規ワークスペースの追加順は列挙順に従う（辞書のキー順に依存しない）
         _unpinnedVsCodeOrder.RemoveAll(name => !runningByWorkspace.ContainsKey(name));
-        foreach (var name in runningByWorkspace.Keys)
+        foreach (var w in running)
         {
-            if (!_unpinnedVsCodeOrder.Contains(name))
-                _unpinnedVsCodeOrder.Add(name);
+            if (runningByWorkspace.ContainsKey(w.WorkspaceName) && !_unpinnedVsCodeOrder.Contains(w.WorkspaceName))
+                _unpinnedVsCodeOrder.Add(w.WorkspaceName);
         }
         foreach (var name in _unpinnedVsCodeOrder)
         {
@@ -128,24 +130,21 @@ public partial class MainWindow : Window
 
         // --- Terminals (handle-based to support duplicate titles) ---
         var terminals = WindowEnumerator.GetTerminalWindows();
-        var runningHandles = new HashSet<nint>(terminals.Select(t => t.Handle));
-
         var terminalEntries = new List<WindowEntry>();
 
         // Pinned terminals first (by title — all matching windows are pinned)
-        var pinnedSet = new HashSet<string>(_pinSettings.PinnedTerminalNames);
         var usedHandles = new HashSet<nint>();
 
         foreach (var pinName in _pinSettings.PinnedTerminalNames)
         {
-            var matched = terminals.Where(t => t.FullTitle == pinName && !usedHandles.Contains(t.Handle)).ToList();
+            var matched = terminals.Where(t => t.FullTitle == pinName && !usedHandles.Contains(t.PrimaryHandle)).ToList();
             if (matched.Count > 0)
             {
                 foreach (var t in matched)
                 {
                     t.IsPinned = true;
                     terminalEntries.Add(t);
-                    usedHandles.Add(t.Handle);
+                    usedHandles.Add(t.PrimaryHandle);
                 }
             }
             else
@@ -162,16 +161,16 @@ public partial class MainWindow : Window
         }
 
         // Non-pinned terminals (stable order by handle)
-        var unpinnedTerminals = terminals.Where(t => !usedHandles.Contains(t.Handle)).ToList();
-        var unpinnedHandles = new HashSet<nint>(unpinnedTerminals.Select(t => t.Handle));
+        var unpinnedTerminals = terminals.Where(t => !usedHandles.Contains(t.PrimaryHandle)).ToList();
+        var unpinnedHandles = new HashSet<nint>(unpinnedTerminals.Select(t => t.PrimaryHandle));
 
         _terminalOrder.RemoveAll(h => !unpinnedHandles.Contains(h));
         foreach (var t in unpinnedTerminals)
         {
-            if (!_terminalOrder.Contains(t.Handle))
-                _terminalOrder.Add(t.Handle);
+            if (!_terminalOrder.Contains(t.PrimaryHandle))
+                _terminalOrder.Add(t.PrimaryHandle);
         }
-        var unpinnedByHandle = unpinnedTerminals.ToDictionary(t => t.Handle, t => t);
+        var unpinnedByHandle = unpinnedTerminals.ToDictionary(t => t.PrimaryHandle, t => t);
         foreach (var handle in _terminalOrder)
         {
             if (unpinnedByHandle.TryGetValue(handle, out var t))
@@ -304,7 +303,7 @@ public partial class MainWindow : Window
         btn.Click += (_, _) =>
         {
             if (entry.IsRunning)
-                WindowActivator.Activate(entry.Handle);
+                WindowActivator.ActivateAll(entry.Handles);
         };
 
         btn.ContextMenu = CreateContextMenu(entry);

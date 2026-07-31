@@ -35,6 +35,16 @@ public static partial class WindowActivator
 
     private const int SW_RESTORE = 9;
 
+    /// <summary>
+    /// 1つのエントリに属するすべてのウィンドウを前面に出す。
+    /// 後ろから順に処理するため、最終的に先頭（代表）のウィンドウが最前面になる。
+    /// </summary>
+    public static void ActivateAll(IReadOnlyList<nint> handles)
+    {
+        for (var i = handles.Count - 1; i >= 0; i--)
+            Activate(handles[i]);
+    }
+
     public static void Activate(nint handle)
     {
         if (IsIconic(handle))
